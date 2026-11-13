@@ -3,8 +3,8 @@ name: Release
 # Every push to main runs the platform's release pipeline (iot-device-sdk
 # firmware-release.yml, pinned by commit SHA): the next semver from the
 # conventional commits (feat: minor, fix: patch; nothing else releases), a
-# build without secrets or AWS, a signed manifest, a GitHub pre-release and
-# the upload to releases/<id>/<X.Y.Z>/. The platform's OTA controller then
+# build without secrets or AWS, a signed manifest, a GitHub release (not
+# marked Latest) and the upload to releases/<id>/<X.Y.Z>/. The platform's OTA controller then
 # runs it on the canary, soaks it and promotes it. A failure opens an issue.
 #
 # Set up by `ergo product init`: repository variables AWS_ROLE_ARN and
@@ -24,9 +24,9 @@ permissions: {}
 jobs:
   release:
     if: vars.AWS_ROLE_ARN != ''
-    uses: ergousha/iot-device-sdk/.github/workflows/firmware-release.yml@2e3a583591e45a1282ddef220e546c5f1cc34955 # fix/release-title-without-product
+    uses: ergousha/iot-device-sdk/.github/workflows/firmware-release.yml@e8770fc5d9306d2d356c26191a1bedf386560478 # feat/full-release-not-latest
     permissions:
-      contents: write # tag and GitHub pre-release
+      contents: write # tag and GitHub release
       id-token: write # AWS OIDC, publish job only
       issues: write # "release vX.Y.Z failed"
     # The Environment release secret (FIRMWARE_SIGNING_KEY) reaches a called
