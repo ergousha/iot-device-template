@@ -1,0 +1,11 @@
+/target
+/.embuild
+.DS_Store
+# NVS dumps of real devices hold private keys and Wi-Fi passwords.
+*.nvs.bin
+# Terraform (cloud/)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log

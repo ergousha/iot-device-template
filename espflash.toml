@@ -1,0 +1,6 @@
+# Read by `espflash flash` (and `cargo run`) from the repository root.
+[idf_format_args]
+# The bootloader this project builds (build.rs copies it here), with OTA
+# rollback; espflash's bundled one has none.
+bootloader = "target/bootloader.bin"
+partition_table = "partitions.csv"

@@ -1,0 +1,41 @@
+name: Release
+
+# Every push to main runs the platform's release pipeline (iot-device-sdk
+# firmware-release.yml, pinned by commit SHA): the next semver from the
+# conventional commits (feat: minor, fix: patch; nothing else releases), a
+# build without secrets or AWS, a signed manifest, a GitHub pre-release and
+# the upload to releases/<id>/<X.Y.Z>/. The platform's OTA controller then
+# runs it on the canary, soaks it and promotes it. A failure opens an issue.
+#
+# Set up by `ergo product init`: repository variables AWS_ROLE_ARN and
+# AWS_FIRMWARE_BUCKET, and Environment `release` with FIRMWARE_SIGNING_KEY.
+# Until then (the template itself, a fresh copy) nothing runs.
+
+on:
+  push:
+    branches: [ main ]
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release:
+    if: vars.AWS_ROLE_ARN != ''
+    uses: ergousha/iot-device-sdk/.github/workflows/firmware-release.yml@2e3a583591e45a1282ddef220e546c5f1cc34955 # fix/release-title-without-product
+    permissions:
+      contents: write # tag and GitHub pre-release
+      id-token: write # AWS OIDC, publish job only
+      issues: write # "release vX.Y.Z failed"
+    # The Environment release secret (FIRMWARE_SIGNING_KEY) reaches a called
+    # workflow only through inherit. The repository keeps no other secrets,
+    # and the callee is pinned by SHA.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
+    with:
+      flash-size: 4mb
+      aws-role-arn: ${{ vars.AWS_ROLE_ARN }}
+      firmware-bucket: ${{ vars.AWS_FIRMWARE_BUCKET }}
+      # Optional, newline-separated (the owner's SSID, say); not secrets.
+      image-scan-forbidden: ${{ vars.IMAGE_SCAN_FORBIDDEN }}

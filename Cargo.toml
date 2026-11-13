@@ -1,0 +1,38 @@
+[package]
+name = "firmware"
+# The release workflow sets FW_VERSION from the tag; this is only the local
+# default.
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+# The firmware is the root crate and builds only for the ESP32 target.
+# logic/ builds and tests on the development host (--target host-tuple).
+[workspace]
+members = ["logic"]
+
+[[bin]]
+name = "firmware"
+harness = false
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+serde_json = "1"
+esp-idf-svc = "0.52.1"
+logic = { path = "logic" }
+# The platform device SDK: enrolment with an NVS soft key, OTA, the platform
+# shadow, the limiter, the bench console. Pinned by commit; CI also takes
+# the cloud/ policies from this revision.
+device-sdk = { git = "https://github.com/ergousha/iot-device-sdk", rev = "746d1b2a66adabcc774d06cbb7044e945a8cce03", features = ["nvs-soft-key"] }
+
+[build-dependencies]
+platform-build = { git = "https://github.com/ergousha/iot-device-sdk", rev = "746d1b2a66adabcc774d06cbb7044e945a8cce03" }
+
+[profile.release]
+opt-level = "s"
+
+[profile.dev]
+debug = true
+opt-level = "z"

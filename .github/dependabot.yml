@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # SDK and crate bumps: a deliberate human click (PLATFORM.md §1). fix:
+  # releases a patch, which is what a merged dependency update is.
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "fix"
+      prefix-scope: "deps"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  - package-ecosystem: "terraform"
+    directory: "/cloud"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"

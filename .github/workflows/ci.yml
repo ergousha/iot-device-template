@@ -1,0 +1,182 @@
+name: CI
+
+# Three jobs, each always reporting (the default-branch ruleset requires
+# "Firmware CI"), each skipping its work when its paths did not change:
+#
+# * Firmware CI  fmt, clippy and a release build for the chip platform.toml
+#                names. No secrets, no AWS: the same build the release ships.
+# * Host tests   the logic crate, on stable Rust for the runner.
+# * cloud/       fmt, validate, and tflint with the platform's policies at
+#                the SDK revision Cargo.toml pins.
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_BUILD_JOBS: "2"
+  CMAKE_BUILD_PARALLEL_LEVEL: "2"
+
+jobs:
+  firmware:
+    name: Firmware CI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check changed paths
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          changed_files="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[].filename')"
+          while IFS= read -r path; do
+            case "$path" in
+              src/*|logic/*|keys/*|certs/*|platform.toml|Cargo.toml|Cargo.lock|build.rs|.cargo/*|rust-toolchain.toml|sdkconfig.defaults|partitions.csv|.github/workflows/ci.yml)
+                echo "firmware=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+            esac
+          done <<< "$changed_files"
+          echo "firmware=false" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        if: steps.filter.outputs.firmware == 'true'
+        with:
+          persist-credentials: false
+
+      - name: Chip
+        id: chip
+        if: steps.filter.outputs.firmware == 'true'
+        shell: python3 {0}
+        run: |
+          import os, re, tomllib
+          chip = tomllib.load(open("platform.toml", "rb"))["product"]["chip"]
+          assert re.fullmatch(r"esp32[a-z0-9]*", chip), chip
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"chip={chip}\n")
+
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        if: steps.filter.outputs.firmware == 'true'
+        with:
+          components: rustfmt
+
+      - name: Format
+        if: steps.filter.outputs.firmware == 'true'
+        run: rustup run stable cargo fmt --all -- --check
+
+      - name: Install ESP toolchain
+        if: steps.filter.outputs.firmware == 'true'
+        uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7.0
+        with:
+          buildtargets: ${{ steps.chip.outputs.chip }}
+          ldproxy: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # read-only: toolchain release downloads
+
+      - name: Set up swap space
+        if: steps.filter.outputs.firmware == 'true'
+        uses: pierotofy/set-swap-space@fc79b3f67fa8a838184ce84a674ca12238d2c761 # master
+        with:
+          swap-size-gb: 10
+
+      # A job without secrets: a dependency cache is fine here (never in the
+      # release workflow).
+      - name: Cache Rust build
+        if: steps.filter.outputs.firmware == 'true'
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Clippy
+        if: steps.filter.outputs.firmware == 'true'
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Build
+        if: steps.filter.outputs.firmware == 'true'
+        run: cargo build --release --locked
+
+  host:
+    name: Host tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RUSTUP_TOOLCHAIN: stable # rust-toolchain.toml pins Espressif's fork for the firmware
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          components: clippy
+
+      # `--target host-tuple` overrides the xtensa default of .cargo/config.toml.
+      - name: Clippy
+        run: cargo clippy -p logic --all-targets --target host-tuple -- -D warnings
+
+      - name: Test
+        run: cargo test -p logic --target host-tuple
+
+  cloud:
+    name: cloud/
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: SDK revision
+        id: sdk
+        shell: python3 {0}
+        run: |
+          import os, re, tomllib
+          present = os.path.isdir("cloud")
+          rev = tomllib.load(open("Cargo.toml", "rb"))["dependencies"]["device-sdk"]["rev"]
+          assert re.fullmatch(r"[0-9a-f]{40}", rev), rev
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"rev={rev}\npresent={'true' if present else 'false'}\n")
+
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        if: steps.sdk.outputs.present == 'true'
+        with:
+          repository: ergousha/iot-device-sdk
+          ref: ${{ steps.sdk.outputs.rev }}
+          path: .sdk
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        if: steps.sdk.outputs.present == 'true'
+        with:
+          terraform_version: 1.17.1
+
+      - name: Format, validate
+        if: steps.sdk.outputs.present == 'true'
+        working-directory: cloud
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - uses: terraform-linters/setup-tflint@90f302c255ef959cbfb4bd10581afecdb7ece3e6 # v4.1.1
+        if: steps.sdk.outputs.present == 'true'
+        with:
+          tflint_version: v0.64.0
+
+      - name: tflint (platform policies)
+        if: steps.sdk.outputs.present == 'true'
+        working-directory: cloud
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # plugin downloads (rate limit)
+          TFLINT_OPA_POLICY_DIR: ${{ github.workspace }}/.sdk/tflint/policies
+        run: |
+          tflint --init
+          tflint --format compact

@@ -1,0 +1,44 @@
+# This product on the Ergousha IoT platform, read at build time by
+# platform-build (iot-device-sdk). Everything here is public: images carry no
+# secrets. `ergo product init` fills in [product] id and chip, [cloud] and
+# [signing] keys; see PLATFORM.md (iot-device-sdk) for every field.
+
+[product]
+# 2-16 lowercase letters and digits, starting with a letter. Frozen once the
+# product exists: S3 prefix, job ids, rule names, registry records.
+id = "template"
+# esp32 or esp32s3; must match .cargo/config.toml's target.
+chip = "esp32s3"
+# The thing name is this MAC (frozen per product): wifi_sta or eth.
+mac_type = "wifi_sta"
+# A P-256 key generated on the device, kept in NVS (the device-sdk feature of
+# the same name). atecc608 needs CryptoAuthLib (see the Vaktus repository).
+key_storage = "nvs-soft-key"
+
+[cloud]
+# Compiled-in default; NVS platform/endpoint overrides it.
+endpoint = "a2pw25e7ewpuwe-ats.iot.eu-central-1.amazonaws.com"
+# The product's fleet provisioning template.
+template = "esp32-ztp-template-fleet-template"
+
+[limits]
+# The publish limiter (these are the defaults): AWS bills per 5 KB.
+publishes_per_minute = 10
+max_message_bytes = 5120
+
+[signing]
+# keys/<id>.pub.pem, all accepted by every image: <id>-a signs releases
+# (Environment release), <id>-b is the offline backup.
+keys = []
+
+[flash]
+partitions = "partitions.csv"
+# Rows units in the field have; a partition table is never rewritten by an
+# OTA update. Change partitions.csv only before the first unit ships.
+frozen = [
+  { name = "nvs", offset = 0x9000, size = 0x6000 },
+  { name = "otadata", offset = 0xf000, size = 0x2000 },
+  { name = "phy_init", offset = 0x11000, size = 0x1000 },
+  { name = "ota_0", offset = 0x20000, size = 0x1f0000 },
+  { name = "ota_1", offset = 0x210000, size = 0x1f0000 },
+]

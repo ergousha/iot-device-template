@@ -1,0 +1,25 @@
+[build]
+# `ergo product init --chip` sets it: xtensa-esp32-espidf or xtensa-esp32s3-espidf.
+target = "xtensa-esp32s3-espidf"
+
+[target.'cfg(target_os = "espidf")']
+linker = "ldproxy"
+# --bootloader: the one this build produced (build.rs stages it), not
+# espflash's bundled one, which has no OTA rollback.
+runner = "espflash flash --bootloader target/bootloader.bin --partition-table partitions.csv --target-app-partition ota_0 --erase-parts otadata --monitor"
+rustflags = ["--cfg", "espidf_time64"]
+
+[unstable]
+build-std = ["std", "panic_abort"]
+
+[env]
+# The chip again, for esp-idf-sys; `ergo product init --chip` sets it.
+MCU = "esp32s3"
+ESP_IDF_VERSION = "v5.5.3"
+ESP_IDF_TOOLS_INSTALL_DIR = "workspace"
+
+# Copies partitions.csv into esp-idf-sys's CMake project, so ESP-IDF and
+# espflash use the same table. The leading `/` anchors the pattern to the
+# workspace root: unanchored, it also matches copies under target/ and .embuild/.
+ESP_IDF_GLOB_PARTITIONS_BASE = { value = ".", relative = true }
+ESP_IDF_GLOB_PARTITIONS_0 = "/partitions.csv"

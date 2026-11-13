@@ -1,0 +1,19 @@
+# Flash layout for 4 MB modules (the Vaktus layout, proven in the field).
+#
+# The partition table at 0x8000 is NOT rewritten by an OTA update: once a unit
+# ships, every row here is frozen for it (platform.toml [flash] frozen, which
+# platform-build checks at every build). Every offset is explicit, so editing
+# one row never moves another. Comments only on lines of their own.
+#
+#   0x009000  nvs       24K  identity, Wi-Fi, platform state
+#   0x00f000  otadata    8K  active-slot selector
+#   0x011000  phy_init   4K  RF calibration
+#   0x020000  ota_0  1984K   app slot A
+#   0x210000  ota_1  1984K   app slot B (ends at 4 MB)
+#
+# Name,   Type, SubType, Offset,   Size
+nvs,      data, nvs,     0x9000,   0x6000
+otadata,  data, ota,     0xf000,   0x2000
+phy_init, data, phy,     0x11000,  0x1000
+ota_0,    app,  ota_0,   0x20000,  0x1F0000
+ota_1,    app,  ota_1,   0x210000, 0x1F0000
