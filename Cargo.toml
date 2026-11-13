@@ -26,10 +26,10 @@ logic = { path = "logic" }
 # shadow, the limiter, the bench console. Pinned by commit; CI also takes
 # the cloud/ policies from this revision. signed-only: unsigned OTA jobs are
 # refused (every product, plan Phase 6).
-device-sdk = { git = "https://github.com/ergousha/iot-device-sdk", rev = "746d1b2a66adabcc774d06cbb7044e945a8cce03", features = ["nvs-soft-key", "signed-only"] }
+device-sdk = { git = "https://github.com/ergousha/iot-device-sdk", rev = "867160f2dea9b8212d50983674c279416cfdd250", features = ["nvs-soft-key", "signed-only"] }
 
 [build-dependencies]
-platform-build = { git = "https://github.com/ergousha/iot-device-sdk", rev = "746d1b2a66adabcc774d06cbb7044e945a8cce03" }
+platform-build = { git = "https://github.com/ergousha/iot-device-sdk", rev = "867160f2dea9b8212d50983674c279416cfdd250" }
 
 [profile.release]
 opt-level = "s"
