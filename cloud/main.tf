@@ -7,6 +7,8 @@
 # The example: the devices' readings (src/app.rs) reach the rule
 # <product>_readings over Basic Ingest ($aws/rules/<product>_readings/<thing>,
 # no messaging fee), which writes them to a 3-day log group. Off by default.
+# The thing is clientid(), which the platform pins to the thing name; never a
+# payload field or topic(), which the device controls (PLATFORM.md §6).
 # Remove or replace it with what the product needs, within the cost rules
 # the CI checks (tflint with the platform's policies).
 #
@@ -65,7 +67,7 @@ resource "aws_iot_topic_rule" "readings" {
   name        = "${local.product}_readings"
   description = "Device readings (Basic Ingest) -> CloudWatch Logs. Off unless debug_telemetry_logs."
   enabled     = var.debug_telemetry_logs
-  sql         = "SELECT thing, fw, up_s, heap, timestamp() AS ts FROM 'dt/+/readings'"
+  sql         = "SELECT clientid() AS thing, fw, up_s, heap, timestamp() AS ts FROM 'dt/+/readings'"
   sql_version = "2016-03-23"
   tags        = { killable = "true" }
 
