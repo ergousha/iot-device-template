@@ -6,6 +6,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Wait until a release is two weeks old (as iot-platform does): most
+    # malicious releases are yanked within days.
+    cooldown:
+      default-days: 14
     open-pull-requests-limit: 10
     commit-message:
       prefix: "fix"
@@ -16,6 +20,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Wait until a release is two weeks old (as iot-platform does): most
+    # malicious releases are yanked within days.
+    cooldown:
+      default-days: 14
     open-pull-requests-limit: 5
     commit-message:
       prefix: "ci"
@@ -25,6 +33,10 @@ updates:
     directory: "/cloud"
     schedule:
       interval: "monthly"
+    # Wait until a release is two weeks old (as iot-platform does): most
+    # malicious releases are yanked within days.
+    cooldown:
+      default-days: 14
     commit-message:
       prefix: "chore"
       include: "scope"
