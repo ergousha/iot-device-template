@@ -73,9 +73,9 @@ pub fn desired_of(message: &Value) -> Option<&Value> {
 }
 
 /// One reading. Small on purpose: AWS bills per 5 KB and per rule action.
+/// No thing name: the rule takes it from the authenticated client id.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Reading<'a> {
-    pub thing: &'a str,
     pub fw: &'a str,
     pub up_s: u64,
     pub heap: u32,
@@ -142,7 +142,6 @@ mod tests {
     #[test]
     fn readings_are_small_and_bounded() {
         let r = Reading {
-            thing: "AABBCCDDEEFF",
             fw: "0.1.0",
             up_s: 42,
             heap: 123_456,
@@ -150,7 +149,7 @@ mod tests {
         let bytes = encode(&r, 5120).unwrap();
         assert_eq!(
             serde_json::from_slice::<Value>(&bytes).unwrap(),
-            json!({"thing": "AABBCCDDEEFF", "fw": "0.1.0", "up_s": 42, "heap": 123456})
+            json!({"fw": "0.1.0", "up_s": 42, "heap": 123456})
         );
         assert!(encode(&r, 10).is_none());
         assert_eq!(

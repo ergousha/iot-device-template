@@ -61,7 +61,6 @@ pub fn run(mut session: Session, product: &Product) -> Result<()> {
         {
             last_reading = Some(now);
             let reading = Reading {
-                thing: &thing,
                 fw: product.fw_version,
                 up_s: now,
                 // SAFETY: a plain getter.
